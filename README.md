@@ -8,3 +8,7 @@ This repo is both an API and a CLI tool to download Windows ISO images from the 
 
 This library is was heavily influenced by [Mido](https://github.com/ElliotKillick/Mido), a Microsoft image download client written in bash.
 
+## Todo
+
+- [ ] Logging
+- [ ] Dev mode

@@ -1,3 +1,3 @@
-import { consumerDownload } from '../src/index.js'
+import consumerDownload from '@/utils/consumerDownload.js'
 
-await consumerDownload({ type: 'consumer', version: '10' })
+await consumerDownload({ version: 10 })
