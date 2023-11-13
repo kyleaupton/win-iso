@@ -1,3 +1,3 @@
-export default function win10x64 () {
+export default async function win10x64 () {
 
 }
