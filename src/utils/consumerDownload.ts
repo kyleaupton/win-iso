@@ -92,7 +92,7 @@ const getIsoDownloadPage = async ({
   return parseHtml(html)
 }
 
-const consumerDownload = async ({ version }: { version: 10 | 11 }): Promise<void> => {
+const consumerDownload = async ({ version, directory }: { version: 10 | 11, directory: string }): Promise<void> => {
   let url = `https://www.microsoft.com/en-us/software-download/windows${version}`
   if (version === 10) url = `${url}ISO`
 

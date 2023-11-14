@@ -4,7 +4,7 @@ import win11x64 from './win11x64.js'
 export interface Media {
   key: string
   displayName: string
-  download: () => Promise<void>
+  download: ({ directory }: { directory: string }) => Promise<void>
 }
 
 export enum MediaKeys {

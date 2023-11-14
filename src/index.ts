@@ -24,5 +24,5 @@ export const download = async ({
     throw Error(`Invalid media key: ${mediaKey}`)
   }
 
-  await targetMedia.download()
+  await targetMedia.download({ directory })
 }

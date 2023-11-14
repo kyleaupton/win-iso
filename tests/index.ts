@@ -1,3 +1,3 @@
-import consumerDownload from '@/utils/consumerDownload.js'
+import { download } from '@/index.js'
 
-await consumerDownload({ version: 10 })
+await download({ mediaKey: 'win10x64', directory: '' })
