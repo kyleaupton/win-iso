@@ -7,7 +7,7 @@ import { parse as parseHtml } from 'node-html-parser'
 import { request } from '@/utils/request.js'
 import { logger } from '@/utils/log.js'
 
-const DEBUG = true
+const DEBUG = process.env.DEBUG === 'true'
 
 const getLogString = (s: string) => {
   return `consumerDownload - ${s}`
