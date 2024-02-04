@@ -1,8 +1,10 @@
 # win-iso
 
+[![Node version](https://img.shields.io/npm/v/@kyleupton/glob-copy.svg?style=flat)](https://www.npmjs.com/package/@kyleupton/win-iso)
+
 ## Overview
 
-This repo is both an API and CLI tool to download Windows ISO images from the official source. The motivation behind making this tool comes from [os-install-maker](https://github.com/kyleaupton/os-install-maker).
+This repo is both a CLI tool and Nodejs API to download Windows ISO images from the official source. The motivation behind making this tool comes from [os-install-maker](https://github.com/kyleaupton/os-install-maker).
 
 ## Inspiration
 
@@ -46,3 +48,4 @@ For the facilitation of development, a debug mode has been created. When activat
 - [x] Dev mode
 - [ ] More version support
 - [ ] Full API + CLI documentation
+- [ ] Download progress
