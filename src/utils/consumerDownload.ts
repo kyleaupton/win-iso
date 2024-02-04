@@ -2,103 +2,85 @@ import { createWriteStream } from 'fs'
 import fs from 'fs/promises'
 import https from 'https'
 import path from 'path'
-import { URL, fileURLToPath } from 'url'
+import { URL } from 'url'
 import { v4 as uuidv4 } from 'uuid'
 import { parse as parseHtml } from 'node-html-parser'
 
-import { request } from '@/utils/request.js'
-import { logger } from '@/utils/log.js'
-
-const DEBUG = process.env.DEBUG === 'true'
+import { request } from '../utils/request.js'
+import { logger } from '../utils/log.js'
 
 const getLogString = (s: string) => {
   return `consumerDownload - ${s}`
 }
 
-const getSampleDataPath = (name: string) => {
-  const dirname = fileURLToPath(path.dirname(import.meta.url))
+class DataStore {
+  debug: boolean
 
-  return path.resolve(
-    dirname,
-    '..',
-    '..',
-    'tests',
-    'sample-res',
-    name
-  )
-}
-
-const getMainDownloadPage = async ({ url }: { url: string }) => {
-  let html
-
-  if (DEBUG) {
-    html = await fs.readFile(getSampleDataPath('mainDownloadPage.html'), { encoding: 'utf-8' })
-  } else {
-    html = (await request({
-      url,
-      method: 'GET'
-    })).data
+  constructor(debug: boolean) {
+    this.debug = debug
   }
 
-  return parseHtml(html)
-}
-
-const getLanguageSkuIdTable = async ({
-  sessionId,
-  urlSegmentParameter,
-  productEditionId
-}: {
-  sessionId: string
-  urlSegmentParameter: string
-  productEditionId: string
-}) => {
-  let html
-
-  if (DEBUG) {
-    html = await fs.readFile(getSampleDataPath('skuId.html'), { encoding: 'utf-8' })
-  } else {
-    html = (await request({
-      url: `https://www.microsoft.com/en-US/api/controls/contentinclude/html?pageId=a8f8f489-4c7f-463a-9ca6-5cff94d8d041&host=www.microsoft.com&segments=software-download,${urlSegmentParameter}&query=&action=getskuinformationbyproductedition&sessionId=${sessionId}&productEditionId=${productEditionId}&sdVersion=2`,
-      method: 'POST'
-    })).data
+  _getSampleDataPath(name: string) {
+    return path.resolve('src', 'sample-res', name)
   }
 
-  return parseHtml(html)
-}
+  // Step 1
+  async mainDownloadPage({ url }: { url: string }) {
+    let html: string
 
-const getIsoDownloadPage = async ({
-  sessionId,
-  urlSegmentParameter,
-  skuId,
-  url
-}: {
-  sessionId: string
-  urlSegmentParameter: string
-  skuId: string
-  url: string
-}) => {
-  let html
+    if (this.debug) {
+      html = await fs.readFile(this._getSampleDataPath('mainDownloadPage.html'), { encoding: 'utf-8' })
+    } else {
+      html = (await request({ url, method: 'GET' })).data
+    }
 
-  if (DEBUG) {
-    html = await fs.readFile(getSampleDataPath('isoDownloadPage.html'), { encoding: 'utf-8' })
-  } else {
-    html = (await request({
-      url: `https://www.microsoft.com/en-US/api/controls/contentinclude/html?pageId=6e2a1789-ef16-4f27-a296-74ef7ef5d96b&host=www.microsoft.com&segments=software-download,${urlSegmentParameter}&query=&action=GetProductDownloadLinksBySku&sessionId=${sessionId}&skuId=${skuId}&language=English&sdVersion=2`,
-      method: 'POST',
-      headers: {
-        Referer: url
-      }
-    })).data
+    return parseHtml(html)
   }
 
-  return parseHtml(html)
+  // Step 2
+  async languageSkuIdTable({ sessionId, urlSegmentParameter, productEditionId }: { sessionId: string, urlSegmentParameter: string, productEditionId: string }) {
+    let html: string
+
+    if (this.debug) {
+      html = await fs.readFile(this._getSampleDataPath('skuId.html'), { encoding: 'utf-8' })
+    } else {
+      html = (await request({
+        url: `https://www.microsoft.com/en-US/api/controls/contentinclude/html?pageId=a8f8f489-4c7f-463a-9ca6-5cff94d8d041&host=www.microsoft.com&segments=software-download,${urlSegmentParameter}&query=&action=getskuinformationbyproductedition&sessionId=${sessionId}&productEditionId=${productEditionId}&sdVersion=2`,
+        method: 'POST'
+      })).data
+    }
+
+    return parseHtml(html)
+  }
+
+  // Step 3
+  async isoDownloadPage({ sessionId, urlSegmentParameter, skuId, url }: { sessionId: string, urlSegmentParameter: string, skuId: string, url: string }) {
+    let html: string
+
+    if (this.debug) {
+      html = await fs.readFile(this._getSampleDataPath('isoDownloadPage.html'), { encoding: 'utf-8' })
+    } else {
+      html = (await request({
+        url: `https://www.microsoft.com/en-US/api/controls/contentinclude/html?pageId=6e2a1789-ef16-4f27-a296-74ef7ef5d96b&host=www.microsoft.com&segments=software-download,${urlSegmentParameter}&query=&action=GetProductDownloadLinksBySku&sessionId=${sessionId}&skuId=${skuId}&language=English&sdVersion=2`,
+        method: 'POST',
+        headers: {
+          Referer: url
+        }
+      })).data
+    }
+
+    return parseHtml(html)
+  }
 }
 
-const consumerDownload = async ({ version, directory }: { version: 10 | 11, directory: string }): Promise<void> => {
+const consumerDownload = async ({ version, directory, name, debug = false }: { version: 10 | 11, directory: string, name?: string, debug?: boolean }): Promise<void> => {
+  // Date source
+  const data = new DataStore(debug)
+
   let url = `https://www.microsoft.com/en-us/software-download/windows${version}`
   if (version === 10) url = `${url}ISO`
 
-  const downloadPage = await getMainDownloadPage({ url })
+  const downloadPage = await data.mainDownloadPage({ url })
 
   logger.info(getLogString('Retrieved main download page'))
 
@@ -121,7 +103,7 @@ const consumerDownload = async ({ version, directory }: { version: 10 | 11, dire
   const sessionId = uuidv4()
 
   // Create new session (I think...)
-  if (!DEBUG) {
+  if (!debug) {
     await request({
       url: `https://vlscppe.microsoft.com/tags?org_id=y6jn8c31&session_id=${sessionId}`
     })
@@ -135,7 +117,7 @@ const consumerDownload = async ({ version, directory }: { version: 10 | 11, dire
   // Get language -> skuID association table
   // SKU ID: This specifies the language of the ISO. We always use "English (United States)", however, the SKU for this changes with each Windows release
   // We must make this request so our next one will be allowed
-  const languageSkuIdTable = await getLanguageSkuIdTable({
+  const languageSkuIdTable = await data.languageSkuIdTable({
     sessionId,
     urlSegmentParameter,
     productEditionId
@@ -163,7 +145,7 @@ const consumerDownload = async ({ version, directory }: { version: 10 | 11, dire
   // Get ISO download link
   // If any request is going to be blocked by Microsoft it's always this last one (the previous requests always seem to succeed)
   // --referer: Required by Microsoft servers to allow request
-  const isoDownloadPage = await getIsoDownloadPage({
+  const isoDownloadPage = await data.isoDownloadPage({
     sessionId,
     urlSegmentParameter,
     skuId,
@@ -202,22 +184,27 @@ const consumerDownload = async ({ version, directory }: { version: 10 | 11, dire
   }
 
   const { pathname } = new URL(downloadUrl)
-  const filename = path.basename(pathname)
+  const filename = name ?? path.basename(pathname)
   const filePath = path.resolve(directory, filename)
-  const file = createWriteStream(filePath)
 
   // TODO: handle errors
-  await new Promise<void>((resolve) => {
-    https.get(downloadUrl, response => {
-      response.pipe(file)
+  if (!debug) {
+    logger.info(getLogString(`Downloading ISO from ${downloadUrl}`))
+    const file = createWriteStream(filePath)
+    await new Promise<void>((resolve) => {
+      https.get(downloadUrl, response => {
+        response.pipe(file)
 
-      file.on('finish', () => {
-        file.close()
-        logger.info(getLogString(`Downloaded ISO to ${filePath}`))
-        resolve()
+        file.on('finish', () => {
+          file.close()
+          logger.info(getLogString(`Downloaded ISO to ${filePath}`))
+          resolve()
+        })
       })
     })
-  })
+  } else {
+    logger.info(getLogString(`Not downloading ISO due to DEBUG mode. Would have saved to ${filePath}`))
+  }
 }
 
 export default consumerDownload
