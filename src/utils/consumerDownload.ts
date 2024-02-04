@@ -1,6 +1,8 @@
+import { createWriteStream } from 'fs'
 import fs from 'fs/promises'
+import https from 'https'
 import path from 'path'
-import url from 'url'
+import { URL, fileURLToPath } from 'url'
 import { v4 as uuidv4 } from 'uuid'
 import { parse as parseHtml } from 'node-html-parser'
 
@@ -14,7 +16,7 @@ const getLogString = (s: string) => {
 }
 
 const getSampleDataPath = (name: string) => {
-  const dirname = url.fileURLToPath(path.dirname(import.meta.url))
+  const dirname = fileURLToPath(path.dirname(import.meta.url))
 
   return path.resolve(
     dirname,
@@ -199,21 +201,23 @@ const consumerDownload = async ({ version, directory }: { version: 10 | 11, dire
     throw Error(message)
   }
 
-  // TODO: handle !isoDownloadLinkHtml
-  //   if ! [ "$iso_download_link_html" ]; then
-  //   # This should only happen if there's been some change to how this API works
-  //   echo_err "Microsoft servers gave us an empty response to our request for an automated download. Please manually download this ISO in a web browser: $url"
-  //   manual_verification="true"
-  //   return 1
-  // fi
+  const { pathname } = new URL(downloadUrl)
+  const filename = path.basename(pathname)
+  const filePath = path.resolve(directory, filename)
+  const file = createWriteStream(filePath)
 
-  // if echo "$iso_download_link_html" | grep -q "We are unable to complete your request at this time."; then
-  //   echo_err "Microsoft blocked the automated download request based on your IP address. Please manually download this ISO in a web browser here: $url"
-  //   manual_verification="true"
-  //   return 1
-  // fi
+  // TODO: handle errors
+  await new Promise<void>((resolve) => {
+    https.get(downloadUrl, response => {
+      response.pipe(file)
 
-  console.log('Link valid for 24 hours', downloadUrl)
+      file.on('finish', () => {
+        file.close()
+        logger.info(getLogString(`Downloaded ISO to ${filePath}`))
+        resolve()
+      })
+    })
+  })
 }
 
 export default consumerDownload
