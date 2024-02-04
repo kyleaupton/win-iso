@@ -1,15 +1,45 @@
 {
-  "name": "windows-iso-downloader",
-  "version": "1.0.0",
-  "description": "",
-  "main": "index.js",
-  "type": "module",
-  "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
+  "name": "@kyleupton/win-iso",
+  "version": "0.0.1-alpha.0",
+  "description": "API and CLI tool to download Windows ISO files",
+  "keywords": [
+    "Windows ISO",
+    "download",
+    "node",
+    "CLI",
+    "API"
+  ],
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/kyleaupton/win-iso.git"
   },
-  "keywords": [],
-  "author": "",
-  "license": "ISC",
+  "publishConfig": {
+    "registry": "https://registry.npmjs.org/"
+  },
+  "type": "module",
+  "main": "dist/cjs/index.js",
+  "types": "dist/cjs/index.d.ts",
+  "bin": "dist/cli.js",
+  "files": [
+    "dist/**/*"
+  ],
+  "exports": {
+    "require": "./dist/cjs/index.js",
+    "import": "./dist/esm/index.js"
+  },
+  "scripts": {
+    "build": "rm -rf dist && tsc --build tsconfig.esm.json && tsc --build tsconfig.cjs.json && node scripts/distPackageJson.mjs",
+    "deploy": "yarn build && npm publish --access public"
+  },
+  "author": "Kyle Upton <kyleaupton@gmail.com>",
+  "license": "MIT",
+  "dependencies": {
+    "axios": "^1.6.0",
+    "commander": "^12.0.0",
+    "node-html-parser": "^6.1.11",
+    "uuid": "^9.0.1",
+    "winston": "^3.11.0"
+  },
   "devDependencies": {
     "@types/node": "^20.8.9",
     "@types/uuid": "^9.0.6",
@@ -21,11 +51,5 @@
     "eslint-plugin-promise": "^6.0.0",
     "tsx": "^3.14.0",
     "typescript": "*"
-  },
-  "dependencies": {
-    "axios": "^1.6.0",
-    "node-html-parser": "^6.1.11",
-    "uuid": "^9.0.1",
-    "winston": "^3.11.0"
   }
 }
