@@ -24,5 +24,6 @@ module.exports = {
   "rules": {
     '@typescript-eslint/strict-boolean-expressions': 0,
     "@typescript-eslint/explicit-function-return-type": 0,
+    '@typescript-eslint/space-before-function-paren': 0
   }
 }
