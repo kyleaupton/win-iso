@@ -49,3 +49,4 @@ For the facilitation of development, a debug mode has been created. When activat
 - [ ] More version support
 - [ ] Full API + CLI documentation
 - [ ] Download progress
+- [ ] Checksum verification
