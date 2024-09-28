@@ -1,14 +1,6 @@
+import { type DownloadProgress } from '../types.js'
 import win10x64 from './win10x64.js'
 import win11x64 from './win11x64.js'
-
-export interface MediaDownloadProgress {
-  percentage: number
-  downloaded: number
-  total: number
-  speed: number
-  eta: number
-  formattedEta: string
-}
 
 export interface MediaDownloadOptions {
   /**
@@ -35,7 +27,7 @@ export interface MediaDownloadOptions {
   /**
    * A callback that is called when progress is made on the download.
    */
-  onProgress?: (progress: MediaDownloadProgress) => void
+  onProgress?: (progress: DownloadProgress) => void
 }
 
 export type MediaDownloadResult = string

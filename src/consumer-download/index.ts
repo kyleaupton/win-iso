@@ -1,77 +1,13 @@
-import { createWriteStream } from 'fs'
-import fs from 'fs/promises'
-import https from 'https'
-import path from 'path'
-import { URL } from 'url'
+import path from 'node:path'
 import { v4 as uuidv4 } from 'uuid'
-import { parse as parseHtml } from 'node-html-parser'
-
+import { type DownloadProgress } from '../types.js'
+import { downloadFile } from '../utils/download.js'
 import { request } from '../utils/request.js'
 import { logger } from '../utils/log.js'
-import { type MediaDownloadProgress } from '../media/index.js'
+import DataStore from './DataStore.js'
 
 const getLogString = (s: string) => {
   return `consumerDownload - ${s}`
-}
-
-class DataStore {
-  debug: boolean
-
-  constructor(debug: boolean) {
-    this.debug = debug
-  }
-
-  _getSampleDataPath(name: string) {
-    return path.resolve('src', 'sample-res', name)
-  }
-
-  // Step 1
-  async mainDownloadPage({ url }: { url: string }) {
-    let html: string
-
-    if (this.debug) {
-      html = await fs.readFile(this._getSampleDataPath('mainDownloadPage.html'), { encoding: 'utf-8' })
-    } else {
-      html = (await request({ url, method: 'GET' })).data
-    }
-
-    return parseHtml(html)
-  }
-
-  // Step 2
-  async languageSkuIdTable({ sessionId, urlSegmentParameter, productEditionId }: { sessionId: string, urlSegmentParameter: string, productEditionId: string }) {
-    let html: string
-
-    if (this.debug) {
-      html = await fs.readFile(this._getSampleDataPath('skuId.html'), { encoding: 'utf-8' })
-    } else {
-      html = (await request({
-        url: `https://www.microsoft.com/en-US/api/controls/contentinclude/html?pageId=a8f8f489-4c7f-463a-9ca6-5cff94d8d041&host=www.microsoft.com&segments=software-download,${urlSegmentParameter}&query=&action=getskuinformationbyproductedition&sessionId=${sessionId}&productEditionId=${productEditionId}&sdVersion=2`,
-        method: 'POST'
-      })).data
-    }
-
-    return parseHtml(html)
-  }
-
-  // Step 3
-  async isoDownloadPage({ sessionId, urlSegmentParameter, skuId, url }: { sessionId: string, urlSegmentParameter: string, skuId: string, url: string }) {
-    let html: string
-
-    if (this.debug) {
-      html = await fs.readFile(this._getSampleDataPath('isoDownloadPage.html'), { encoding: 'utf-8' })
-    } else {
-      html = (await request({
-        url: `https://www.microsoft.com/en-US/api/controls/contentinclude/html?pageId=6e2a1789-ef16-4f27-a296-74ef7ef5d96b&host=www.microsoft.com&segments=software-download,${urlSegmentParameter}&query=&action=GetProductDownloadLinksBySku&sessionId=${sessionId}&skuId=${skuId}&language=English&sdVersion=2`,
-        method: 'POST',
-        headers: {
-          Referer: url
-        }
-      })).data
-    }
-
-    return parseHtml(html)
-  }
 }
 
 interface ConsumerDownloadOptions {
@@ -80,7 +16,7 @@ interface ConsumerDownloadOptions {
   name?: string
   debug?: boolean
   log?: boolean
-  onProgress?: (progress: MediaDownloadProgress) => void
+  onProgress?: (progress: DownloadProgress) => void
 }
 
 const consumerDownload = async ({
@@ -88,7 +24,8 @@ const consumerDownload = async ({
   directory,
   name,
   debug = false,
-  log
+  log,
+  onProgress
 }: ConsumerDownloadOptions): Promise<string> => {
   if (!log) {
     logger.transports.forEach(t => (t.silent = true))
@@ -207,28 +144,12 @@ const consumerDownload = async ({
   const filename = name ?? path.basename(pathname)
   const filePath = path.resolve(directory, filename)
 
-  // TODO: handle errors, send progress
-  if (!debug) {
-    logger.info(getLogString(`Downloading ISO from ${downloadUrl}`))
-    const file = createWriteStream(filePath)
-    await new Promise<void>((resolve) => {
-      https.get(downloadUrl, response => {
-        response.pipe(file)
-
-        file.on('finish', () => {
-          file.close()
-          logger.info(getLogString(`Downloaded ISO to ${filePath}`))
-          resolve()
-        })
-      })
-    })
-  } else {
-    logger.info(getLogString(`Not downloading ISO due to DEBUG mode. Would have saved to ${filePath}`))
-    // For testing purposes, we want to send fake progress
-    setTimeout(() => {
-      o
-    }, 1000)
-  }
+  await downloadFile({
+    url: downloadUrl,
+    filePath,
+    debug,
+    onProgress
+  })
 
   return filePath
 }

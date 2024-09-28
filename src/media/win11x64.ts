@@ -1,5 +1,5 @@
 import { type Media } from './index.js'
-import consumerDownload from '../utils/consumerDownload.js'
+import consumerDownload from '../consumer-download/index.js'
 
 const win11x64: Media = {
   displayName: 'Windows 11 (64-bit)',

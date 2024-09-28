@@ -34,14 +34,17 @@
     "@inquirer/prompts": "^6.0.1",
     "axios": "^1.6.0",
     "chalk": "4.1.2",
+    "cli-progress": "^3.12.0",
     "commander": "^12.0.0",
     "node-html-parser": "^6.1.11",
     "ora": "^8.1.0",
+    "pretty-bytes": "^6.1.1",
     "tiny-typed-emitter": "^2.1.0",
     "uuid": "^9.0.1",
     "winston": "^3.11.0"
   },
   "devDependencies": {
+    "@types/cli-progress": "^3.11.6",
     "@types/node": "^20.8.9",
     "@types/uuid": "^9.0.6",
     "@typescript-eslint/eslint-plugin": "^6.4.0",

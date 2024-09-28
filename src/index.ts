@@ -1,5 +1,6 @@
 import { TypedEmitter } from 'tiny-typed-emitter'
-import media, { type Media, type MediaKeys, type MediaDownloadOptions, type MediaDownloadProgress } from './media/index.js'
+import media, { type Media, type MediaKeys, type MediaDownloadOptions } from './media/index.js'
+import { type DownloadProgress } from './types.js'
 
 type DownloadChoice = Media & { key: MediaKeys }
 
@@ -21,7 +22,7 @@ export const getDownloadChoices = (): DownloadChoice[] => {
 type DownloadOptions = Omit<MediaDownloadOptions, 'onProgress'> & { key: MediaKeys }
 
 interface WindowsIsoDownloaderEvents {
-  'progress': (progress: MediaDownloadProgress) => void
+  'progress': (progress: DownloadProgress) => void
 }
 
 export class WindowsIsoDownloader extends TypedEmitter<WindowsIsoDownloaderEvents> {
