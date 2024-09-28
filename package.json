@@ -13,33 +13,29 @@
     "type": "git",
     "url": "https://github.com/kyleaupton/win-iso.git"
   },
-  "publishConfig": {
-    "registry": "https://registry.npmjs.org/"
-  },
+  "license": "MIT",
+  "author": "Kyle Upton <kyleaupton@gmail.com>",
   "type": "module",
-  "main": "dist/cjs/index.js",
-  "types": "dist/cjs/index.d.ts",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
   "bin": {
-    "win-iso": "dist/cjs/cli.js"
+    "win-iso": "dist/cli/index.js"
   },
   "files": [
     "dist/**/*"
   ],
-  "exports": {
-    "require": "./dist/cjs/index.js",
-    "import": "./dist/esm/index.js"
-  },
   "scripts": {
-    "build": "rm -rf dist && tsc --build tsconfig.esm.json && tsc --build tsconfig.cjs.json && node scripts/postBuild.mjs",
-    "deploy": "yarn build && npm publish --access public"
+    "build": "rm -rf dist && tsc",
+    "deploy": "yarn build && npm publish --access public",
+    "type-check": "tsc --noEmit"
   },
-  "author": "Kyle Upton <kyleaupton@gmail.com>",
-  "license": "MIT",
   "dependencies": {
+    "@inquirer/prompts": "^6.0.1",
     "axios": "^1.6.0",
     "chalk": "4.1.2",
     "commander": "^12.0.0",
     "node-html-parser": "^6.1.11",
+    "ora": "^8.1.0",
     "uuid": "^9.0.1",
     "winston": "^3.11.0"
   },
@@ -54,5 +50,8 @@
     "eslint-plugin-promise": "^6.0.0",
     "tsx": "^3.14.0",
     "typescript": "*"
+  },
+  "publishConfig": {
+    "registry": "https://registry.npmjs.org/"
   }
 }

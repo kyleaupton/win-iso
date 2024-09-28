@@ -1,5 +1,11 @@
+import { type Media } from './index.js'
 import consumerDownload from '../utils/consumerDownload.js'
 
-export default async function win10x64({ directory, name, debug }: { directory: string, name?: string, debug?: boolean }) {
-  await consumerDownload({ directory, version: 11, name, debug })
+const win11x64: Media = {
+  displayName: 'Windows 11 (64-bit)',
+  download: async (options) => {
+    return await consumerDownload({ version: 11, ...options })
+  }
 }
+
+export default win11x64

@@ -73,7 +73,25 @@ class DataStore {
   }
 }
 
-const consumerDownload = async ({ version, directory, name, debug = false }: { version: 10 | 11, directory: string, name?: string, debug?: boolean }): Promise<void> => {
+interface ConsumerDownloadOptions {
+  version: 10 | 11
+  directory: string
+  name?: string
+  debug?: boolean
+  log?: boolean
+}
+
+const consumerDownload = async ({
+  version,
+  directory,
+  name,
+  debug = false,
+  log
+}: ConsumerDownloadOptions): Promise<string> => {
+  if (!log) {
+    logger.transports.forEach(t => (t.silent = true))
+  }
+
   // Date source
   const data = new DataStore(debug)
 
@@ -205,6 +223,8 @@ const consumerDownload = async ({ version, directory, name, debug = false }: { v
   } else {
     logger.info(getLogString(`Not downloading ISO due to DEBUG mode. Would have saved to ${filePath}`))
   }
+
+  return filePath
 }
 
 export default consumerDownload
