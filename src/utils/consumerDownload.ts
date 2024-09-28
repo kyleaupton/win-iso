@@ -8,6 +8,7 @@ import { parse as parseHtml } from 'node-html-parser'
 
 import { request } from '../utils/request.js'
 import { logger } from '../utils/log.js'
+import { type MediaDownloadProgress } from '../media/index.js'
 
 const getLogString = (s: string) => {
   return `consumerDownload - ${s}`
@@ -79,6 +80,7 @@ interface ConsumerDownloadOptions {
   name?: string
   debug?: boolean
   log?: boolean
+  onProgress?: (progress: MediaDownloadProgress) => void
 }
 
 const consumerDownload = async ({
@@ -205,7 +207,7 @@ const consumerDownload = async ({
   const filename = name ?? path.basename(pathname)
   const filePath = path.resolve(directory, filename)
 
-  // TODO: handle errors
+  // TODO: handle errors, send progress
   if (!debug) {
     logger.info(getLogString(`Downloading ISO from ${downloadUrl}`))
     const file = createWriteStream(filePath)
@@ -222,6 +224,10 @@ const consumerDownload = async ({
     })
   } else {
     logger.info(getLogString(`Not downloading ISO due to DEBUG mode. Would have saved to ${filePath}`))
+    // For testing purposes, we want to send fake progress
+    setTimeout(() => {
+      o
+    }, 1000)
   }
 
   return filePath

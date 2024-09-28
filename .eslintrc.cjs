@@ -1,29 +1,30 @@
 module.exports = {
-  "env": {
-    "es2021": true,
-    "node": true
+  env: {
+    es2021: true,
+    node: true
   },
-  "extends": "standard-with-typescript",
-  "overrides": [
+  extends: 'standard-with-typescript',
+  overrides: [
     {
-      "env": {
-        "node": true
+      env: {
+        node: true
       },
-      "files": [
-        ".eslintrc.{js,cjs}"
+      files: [
+        '.eslintrc.{js,cjs}'
       ],
-      "parserOptions": {
-        "sourceType": "script"
+      parserOptions: {
+        sourceType: 'script'
       }
     }
   ],
-  "parserOptions": {
-    "ecmaVersion": "latest",
-    "sourceType": "module"
+  parserOptions: {
+    project: ['./tsconfig.json', './tsconfig.tests.json'],
+    ecmaVersion: 'latest',
+    sourceType: 'module'
   },
-  "rules": {
+  rules: {
     '@typescript-eslint/strict-boolean-expressions': 0,
-    "@typescript-eslint/explicit-function-return-type": 0,
+    '@typescript-eslint/explicit-function-return-type': 0,
     '@typescript-eslint/space-before-function-paren': 0
   }
 }

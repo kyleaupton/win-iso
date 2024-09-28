@@ -6,7 +6,7 @@ import { select, input } from '@inquirer/prompts'
 import chalk from 'chalk'
 import ora from 'ora'
 import { logger } from '../utils/log.js'
-import { getDownloadOptions } from '../index.js'
+import { getDownloadChoices } from '../index.js'
 import { getDownloadLocationChoices } from './utils.js'
 
 const packageJson = JSON.parse(fs.readFileSync(new URL('../../package.json', import.meta.url), 'utf-8'))
@@ -31,7 +31,7 @@ program
 
     // Data
     console.log(
-      getDownloadOptions()
+      getDownloadChoices()
         .map(x => `${x.key}\t${x.displayName}`)
         .join('\n')
     )
@@ -46,7 +46,7 @@ program
   .addOption(new Option('--log', 'Enable logging'))
   .description('Download the specified windows version')
   .action(async (key, { name, directory, debug, log }) => {
-    const options = getDownloadOptions()
+    const options = getDownloadChoices()
     const option = options.find(x => x.key === key)
 
     if (!option) {
@@ -60,14 +60,14 @@ program
 
 if (process.argv.length <= 2) {
   // Interactive
-  const downloadOptions = getDownloadOptions()
+  const downloadChoices = getDownloadChoices()
 
   const chosenKey = await select({
     message: 'Select a version of Windows to download',
-    choices: downloadOptions.map(x => ({ name: x.displayName, value: x.key }))
+    choices: downloadChoices.map(x => ({ name: x.displayName, value: x.key }))
   })
 
-  const chosenVersion = downloadOptions.find(x => x.key === chosenKey)
+  const chosenVersion = downloadChoices.find(x => x.key === chosenKey)
   if (!chosenVersion) {
     console.error(`Invalid key: ${chosenKey}. Use 'list' command to see available options.`)
     process.exit(1)

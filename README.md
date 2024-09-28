@@ -4,33 +4,90 @@
 
 ## Overview
 
-This repo is both a CLI tool and Nodejs API to download Windows ISO images from the official source. The motivation behind making this tool comes from [os-install-maker](https://github.com/kyleaupton/os-install-maker).
+<!-- This repo is both a CLI tool and Nodejs API to download Windows ISO images from the official source. -->
+
+This library provides a simple way to download Windows ISO images from Microsoft. It is designed to be used as a CLI tool or as a Node.js API.
 
 ## Inspiration
 
 This library was heavily influenced by [Mido](https://github.com/ElliotKillick/Mido), a Microsoft image download client written in bash.
 
-## CLI Example
+## CLI
+
+### Installation
+
+For CLI usage, install the package globally:
 
 ```bash
-# Install globally
 npm i -g @kyleupton/win-iso
+```
 
-# List available download options
+### CLI Usage
+
+You can use the CLI tool interactively or non-interactively by passing arguments.
+
+#### Interactive
+
+Simply run the following command to start the interactive CLI:
+
+```bash
+win-iso
+```
+
+#### Non-Interactive
+
+First list the available download options:
+
+```bash
 win-iso list
+```
 
-# Download a specified version
+Then download a specified version:
+
+```bash
 win-iso download win10x64
 ```
 
-## API Example
+### API
+
+### Installation
+
+For API usage, install the package as a dependency:
+
+```bash
+npm i @kyleupton/win-iso
+```
+
+### API Usage
 
 ```typescript
-import { getDownloadOptions, download } from '@kyleupton/win-iso'
+import { getDownloadOptions, WindowsIsoDownloader } from '@kyleupton/win-iso'
 
-const options = getDownloadOptions() // [ { key: 'win10x64', displayName: 'Windows 10 (64-bit)' }... ]
+// Get the available download options
+// [
+//   {
+//     key: 'win10x64',
+//     displayName: 'Windows 10 (64-bit)'
+//   },
+//   {
+//     key: 'win11x64',
+//     displayName: 'Windows 11 (64-bit)'
+//   }
+//   ...
+// ]
+const options = getDownloadOptions()
 
-await download({ key: 'win10x64', directory: '~/Downloads' })
+// Download a specific version
+const downloader = new WindowsIsoDownloader({
+  version: 'win10x64',
+  directory: '/path/to/save',
+})
+
+downloader.on('progress', (progress) => {
+  console.log(`Downloaded ${progress.percentage}%`)
+})
+
+await downloader.download()
 ```
 
 ## Constraints

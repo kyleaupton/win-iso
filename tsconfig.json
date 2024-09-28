@@ -1,8 +1,7 @@
 {
-  "include": ["src/**/*.ts"],
+  "include": ["src/**/*.ts", ".eslintrc.cjs"],
   "exclude": [
     "node_modules",
-    "tests/**/*.ts",
     "scripts/**/*"
   ],
   "compilerOptions": {
