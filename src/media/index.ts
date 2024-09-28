@@ -13,13 +13,6 @@ export interface MediaDownloadOptions {
    */
   name?: string
   /**
-   * Enable debug mode. If enabled, this library will not actually
-   * make any requests to Microsoft's servers, but will instead
-   * use the sample data provided in the `samples-res` directory.
-   * This also means that a ISO file will not be downloaded.
-   */
-  debug?: boolean
-  /**
    * Enable logging. If enabled, this library will log various
    * information to stdio.
    */

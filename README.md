@@ -1,10 +1,8 @@
 # win-iso
 
-[![Node version](https://img.shields.io/npm/v/@kyleupton/glob-copy.svg?style=flat)](https://www.npmjs.com/package/@kyleupton/win-iso)
+[![NPM version](https://img.shields.io/npm/v/@kyleupton/glob-copy.svg?style=flat)](https://www.npmjs.com/package/@kyleupton/win-iso)
 
 ## Overview
-
-<!-- This repo is both a CLI tool and Nodejs API to download Windows ISO images from the official source. -->
 
 This library provides a simple way to download Windows ISO images from Microsoft. It is designed to be used as a CLI tool or as a Node.js API.
 
@@ -96,7 +94,60 @@ Please be aware that Microsoft has implemented measures to discourage the automa
 
 It's worth noting that most conventional VPN services may not provide a workaround to this restriction, as their IP ranges could potentially be pre-emptively banned. A less common VPN service or a self-hosted solution may be more successful in circumventing these limitations.
 
-For the facilitation of development, a debug mode has been created. When activated, this mode ensures that the tool does not establish communication with Microsoft's servers. Instead, it operates using sample HTML files.
+For the facilitation of development, a dev mode has been created. When activated, this mode ensures that the tool does not establish communication with Microsoft's servers. Instead, it operates using sample HTML files.
+
+## Logging
+
+Logging is available for both the CLI and API to help with debugging. It is disabled by default.
+
+### CLI
+
+To enable logging for the CLI, set the `WIN_ISO_DEBUG` environment variable to `true`.
+
+```bash
+WIN_ISO_DEBUG=true win-iso download win10x64
+```
+
+### API
+
+To enable logging for the API, pass the `log` option to the `WindowsIsoDownloader` constructor.
+
+```typescript
+const downloader = new WindowsIsoDownloader({
+  key: 'win10x64',
+  directory: '/path/to/save',
++  log: true,
+})
+```
+
+## Development
+
+### Installation
+
+```bash
+git clone https://github.com/kyleaupton/win-iso.git
+cd win-iso
+yarn
+```
+
+### Running
+
+```bash
+# Interactive CLI
+npx tsx src/cli/index.ts
+
+# Non-interactive CLI
+npx tsx src/cli/index.ts list
+npx tsx src/cli/index.ts download win10x64
+```
+
+### Use Dev Mode
+
+To use dev mode, set the `WIN_ISO_DEV` environment variable to `true`. This works for both the CLI and API. When activated, the tool will use sample HTML files instead of communicating with Microsoft's servers. This mode is unavailable in production as the sample HTML files are not included in the distribution.
+
+```bash
+WIN_ISO_DEV=true npx tsx src/cli/index.ts
+```
 
 ## Todo
 
@@ -105,5 +156,5 @@ For the facilitation of development, a debug mode has been created. When activat
 - [x] Dev mode
 - [ ] More version support
 - [ ] Full API + CLI documentation
-- [ ] Download progress
+- [x] Download progress
 - [ ] Checksum verification

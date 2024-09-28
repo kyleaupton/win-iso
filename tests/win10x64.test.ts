@@ -17,7 +17,7 @@ describe('Win10x64', () => {
     const downloader = new WindowsIsoDownloader({
       key: 'win10x64',
       directory,
-      debug: true
+      log: true
     })
 
     downloader.on('progress', (progress) => {

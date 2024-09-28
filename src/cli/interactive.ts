@@ -1,11 +1,14 @@
 import fs from 'node:fs'
 import { select, input } from '@inquirer/prompts'
-import cliProgress from 'cli-progress'
-import prettyBytes from 'pretty-bytes'
 import { getDownloadChoices } from '../index.js'
+import ProgressBar from './ProgressBar.js'
 import { getDownloadLocationChoices } from './utils.js'
 
 export const interactive = async () => {
+  if (process.env.WIN_ISO_DEV === 'true') {
+    console.log('Dev mode enabled')
+  }
+
   const downloadChoices = getDownloadChoices()
 
   const chosenKey = await select({
@@ -37,38 +40,13 @@ export const interactive = async () => {
     process.exit(1)
   }
 
-  // const debug = process.env.DEBUG === 'true'
-  // const log = process.env.LOG === 'true'
-  const debug = true
-  const log = false
-
   console.log('\nDownloading...')
-
-  const progressBar = new cliProgress.SingleBar({
-    format: '{bar} {percentage}% | ETA: {eta} | Speed: {speed} | {progress}'
-  }, cliProgress.Presets.shades_classic)
-
-  progressBar.start(100, 0, {
-    eta: 'N/A',
-    speed: 'N/A',
-    progress: '0 / 0'
-  })
+  const progressBar = new ProgressBar()
 
   const path = await chosenVersion.download({
     directory: downloadLocation,
-    debug,
-    log,
-    onProgress: (progress) => {
-      progressBar.update(progress.percentage, {
-        eta: progress.formattedEta,
-        speed: prettyBytes(progress.speed),
-        progress: `${prettyBytes(progress.downloaded)} / ${prettyBytes(progress.total)}`
-      })
-
-      if (progress.percentage === 100) {
-        progressBar.stop()
-      }
-    }
+    log: process.env.WIN_ISO_DEBUG === 'true',
+    onProgress: (progress) => { progressBar.update(progress) }
   })
 
   console.log(`\nDownloaded: ${path}`)

@@ -14,7 +14,6 @@ interface ConsumerDownloadOptions {
   version: 10 | 11
   directory: string
   name?: string
-  debug?: boolean
   log?: boolean
   onProgress?: (progress: DownloadProgress) => void
 }
@@ -23,16 +22,18 @@ const consumerDownload = async ({
   version,
   directory,
   name,
-  debug = false,
   log,
   onProgress
 }: ConsumerDownloadOptions): Promise<string> => {
+  const IS_DEV = process.env.WIN_ISO_DEV === 'true'
+
+  // If logging is turned off, silence all transports
   if (!log) {
     logger.transports.forEach(t => (t.silent = true))
   }
 
   // Date source
-  const data = new DataStore(debug)
+  const data = new DataStore(IS_DEV)
 
   let url = `https://www.microsoft.com/en-us/software-download/windows${version}`
   if (version === 10) url = `${url}ISO`
@@ -60,7 +61,7 @@ const consumerDownload = async ({
   const sessionId = uuidv4()
 
   // Create new session (I think...)
-  if (!debug) {
+  if (!IS_DEV) {
     await request({
       url: `https://vlscppe.microsoft.com/tags?org_id=y6jn8c31&session_id=${sessionId}`
     })
@@ -147,7 +148,6 @@ const consumerDownload = async ({
   await downloadFile({
     url: downloadUrl,
     filePath,
-    debug,
     onProgress
   })
 

@@ -5,12 +5,13 @@ import { type DownloadProgress } from '../types.js'
 interface DownloadFileOptions {
   url: string
   filePath: string
-  debug?: boolean
   onProgress?: (progress: DownloadProgress) => void
 }
 
 export const downloadFile = async (options: DownloadFileOptions) => {
-  if (options.debug) {
+  const IS_DEV = process.env.WIN_ISO_DEV === 'true'
+
+  if (IS_DEV) {
     await simulateDownload(options)
   } else {
     await realDownload(options)

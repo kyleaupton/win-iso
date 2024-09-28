@@ -2,7 +2,7 @@ import fs from 'node:fs'
 import { Command, Option } from 'commander'
 import chalk from 'chalk'
 import { getDownloadChoices } from '../index.js'
-import { logger } from '../utils/log.js'
+import ProgressBar from './ProgressBar.js'
 
 export const nonInteractive = async () => {
   const packageJson = JSON.parse(
@@ -39,20 +39,32 @@ export const nonInteractive = async () => {
     .argument('<key>', 'The key of the windows version to download')
     .addOption(new Option('-d, --directory <path>', 'The directory to save the downloaded ISO in'))
     .addOption(new Option('-n, --name <name>', 'The output name for the downloaded file').conflicts('-d, --directory'))
-    .addOption(new Option('--debug', 'Enable debug mode'))
-    .addOption(new Option('--log', 'Enable logging'))
     .description('Download the specified windows version')
-    .action(async (key, { name, directory, debug, log }) => {
+    .action(async (key, { name, directory }) => {
+      // Validate location exists if provided
+      if (directory && !fs.existsSync(directory)) {
+        console.error(`Error: Download location ${directory} does not exist`)
+        process.exit(1)
+      }
+
       const options = getDownloadChoices()
       const option = options.find(x => x.key === key)
-
       if (!option) {
         console.error(`Invalid key: ${key}. Use 'list' command to see available options.`)
         process.exit(1)
       }
 
-      logger.info(`Downloading ${option.displayName}...`)
-      await option.download({ directory: directory || process.cwd(), name, debug, log })
+      console.log('Downloading...')
+      const progressBar = new ProgressBar()
+
+      const path = await option.download({
+        directory: directory || process.cwd(),
+        name,
+        log: process.env.WIN_ISO_DEBUG === 'true',
+        onProgress: (progress) => { progressBar.update(progress) }
+      })
+
+      console.log(`Downloaded: ${path}`)
     })
 
   program.parse()
