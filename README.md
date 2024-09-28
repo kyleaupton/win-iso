@@ -79,7 +79,7 @@ const choices = getDownloadChoices()
 
 // Download a specific version
 const downloader = new WindowsIsoDownloader({
-  version: 'win10x64',
+  key: 'win10x64',
   directory: '/path/to/save',
 })
 
