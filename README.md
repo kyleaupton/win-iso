@@ -48,7 +48,7 @@ Then download a specified version:
 win-iso download win10x64
 ```
 
-### API
+## API
 
 ### Installation
 
