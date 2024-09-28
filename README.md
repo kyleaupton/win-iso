@@ -61,9 +61,9 @@ npm i @kyleupton/win-iso
 ### API Usage
 
 ```typescript
-import { getDownloadOptions, WindowsIsoDownloader } from '@kyleupton/win-iso'
+import { getDownloadChoices, WindowsIsoDownloader } from '@kyleupton/win-iso'
 
-// Get the available download options
+// Get the available download choices
 // [
 //   {
 //     key: 'win10x64',
@@ -75,7 +75,7 @@ import { getDownloadOptions, WindowsIsoDownloader } from '@kyleupton/win-iso'
 //   }
 //   ...
 // ]
-const options = getDownloadOptions()
+const choices = getDownloadChoices()
 
 // Download a specific version
 const downloader = new WindowsIsoDownloader({
