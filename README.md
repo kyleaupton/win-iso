@@ -15,7 +15,7 @@ This library provides a simple way to download Windows ISO images from Microsoft
 - Node.js API
 - Checksum verification
 - Download progress
-- Support for other languages
+- Supports all languages available on the Microsoft website
 
 ## Inspiration
 
