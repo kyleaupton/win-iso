@@ -6,6 +6,17 @@
 
 This library provides a simple way to download Windows ISO images from Microsoft. It is designed to be used as a CLI tool or as a Node.js API.
 
+
+## Features
+
+- Download Windows 10 x32 and x64, and Windows 11 x64
+- Interactive CLI
+- Non-interactive CLI
+- Node.js API
+- Checksum verification
+- Download progress
+- Support for other languages
+
 ## Inspiration
 
 This library was heavily influenced by [Mido](https://github.com/ElliotKillick/Mido), a Microsoft image download client written in bash.
