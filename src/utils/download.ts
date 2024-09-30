@@ -1,17 +1,16 @@
 import { createWriteStream } from 'node:fs'
 import https from 'node:https'
-import { type DownloadProgress } from '../types.js'
+import { type DownloadProgress } from '@/types'
 
 interface DownloadFileOptions {
   url: string
   filePath: string
+  isDev?: boolean
   onProgress?: (progress: DownloadProgress) => void
 }
 
 export const downloadFile = async (options: DownloadFileOptions) => {
-  const IS_DEV = process.env.WIN_ISO_DEV === 'true'
-
-  if (IS_DEV) {
+  if (options.isDev) {
     await simulateDownload(options)
   } else {
     await realDownload(options)
@@ -48,6 +47,7 @@ const realDownload = async ({
 
         // Create the progress object
         const progress: DownloadProgress = {
+          type: 'download',
           percentage,
           downloaded,
           total,
@@ -99,6 +99,7 @@ const simulateDownload = async ({
       const formattedEta = new Date(eta * 1000).toISOString().substr(11, 8) // Format as hh:mm:ss
 
       const progress: DownloadProgress = {
+        type: 'download',
         percentage,
         downloaded,
         total: totalSize,

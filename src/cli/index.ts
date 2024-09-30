@@ -1,10 +1,20 @@
 #!/usr/bin/env node
 
-import { interactive } from './interactive.js'
-import { nonInteractive } from './non-interactive.js'
+import { interactive } from './interactive'
+import { nonInteractive } from './non-interactive'
 
 if (process.argv.length <= 2) {
-  await interactive()
+  interactive()
+    .then(() => process.exit(0))
+    .catch((error) => {
+      console.error(error)
+      process.exit(1)
+    })
 } else {
-  await nonInteractive()
+  nonInteractive()
+    .then(() => process.exit(0))
+    .catch((error) => {
+      console.error(error)
+      process.exit(1)
+    })
 }

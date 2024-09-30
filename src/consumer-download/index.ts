@@ -1,157 +1,198 @@
 import path from 'node:path'
+import { parse as parseHtml } from 'node-html-parser'
 import { v4 as uuidv4 } from 'uuid'
-import { type DownloadProgress } from '../types.js'
-import { downloadFile } from '../utils/download.js'
-import { request } from '../utils/request.js'
-import { logger } from '../utils/log.js'
-import DataStore from './DataStore.js'
+import { WinIsoChecksumError, WinIsoRateLimitError } from '@/errors'
+import { downloadFile } from '@/utils/download'
+import { getFileHash } from '@/utils/checksum'
+import { type Progress } from '@/types'
+import { DataStore, ProductionStrategy, DebugStrategy } from './DataStore'
+import { request } from './request'
+import { type Language } from './languages'
 
-const getLogString = (s: string) => {
-  return `consumerDownload - ${s}`
-}
-
-interface ConsumerDownloadOptions {
-  version: 10 | 11
+interface ConsumerDownloadOptionsBase {
+  language: Language
   directory: string
   name?: string
-  log?: boolean
-  onProgress?: (progress: DownloadProgress) => void
+  onProgress?: (progress: Progress) => void
 }
 
-const consumerDownload = async ({
-  version,
-  directory,
-  name,
-  log,
-  onProgress
-}: ConsumerDownloadOptions): Promise<string> => {
+interface DownloadWindows10Options extends ConsumerDownloadOptionsBase {
+  version: 10
+  architecture: 'x32' | 'x64'
+}
+
+interface DownloadWindows11Options extends ConsumerDownloadOptionsBase {
+  version: 11
+}
+
+type DownloadOptions = DownloadWindows10Options | DownloadWindows11Options
+
+const isWindows10Options = (options: DownloadOptions): options is DownloadWindows10Options => {
+  return options.version === 10
+}
+
+export const consumerDownload = async (options: DownloadOptions) => {
+  options.onProgress?.({ type: 'generating-download-link' })
+
   const IS_DEV = process.env.WIN_ISO_DEV === 'true'
 
-  // If logging is turned off, silence all transports
-  if (!log) {
-    logger.transports.forEach(t => (t.silent = true))
+  const strategy = IS_DEV
+    ? new DebugStrategy(options.version)
+    : new ProductionStrategy(options.version)
+
+  const dataStore = new DataStore(strategy)
+
+  //
+  // Get ISO edition ID
+  //
+  const mainDownloadPage = await dataStore.mainDownloadPage()
+
+  // First we need to get the product edition select element
+  const select = mainDownloadPage.getElementById('product-edition')
+  if (!select) {
+    throw Error('Product edition select element was not found')
   }
 
-  // Date source
-  const data = new DataStore(IS_DEV)
+  // Next we need to find the first option that is not null
+  // There should only be one option that is not null
+  const productEdition = select
+    .querySelectorAll('option')
+    .find((option) => option.getAttribute('value') !== 'null')
+    ?.getAttribute('value')
 
-  let url = `https://www.microsoft.com/en-us/software-download/windows${version}`
-  if (version === 10) url = `${url}ISO`
-
-  const downloadPage = await data.mainDownloadPage({ url })
-
-  logger.info(getLogString('Retrieved main download page'))
-
-  const productEditionId =
-    downloadPage
-      // Grab all option elements
-      .querySelectorAll('option')
-      // Find the options that starts with 'Windows' and return it's value
-      .find(item => item.innerHTML.startsWith('Windows'))?.attributes.value
-
-  if (!productEditionId) {
-    const message = 'Product Edition ID was not found when parsing download page'
-    logger.error(getLogString(message))
-    throw Error(message)
+  if (!productEdition) {
+    throw Error('Product edition option was not found')
   }
 
-  logger.info(getLogString(`Parsed product edition ID from download page - ${productEditionId}`))
-
-  // Arbitrary session ID
+  //
+  // Create session
+  //
   const sessionId = uuidv4()
 
-  // Create new session (I think...)
   if (!IS_DEV) {
     await request({
-      url: `https://vlscppe.microsoft.com/tags?org_id=y6jn8c31&session_id=${sessionId}`
+      method: 'GET',
+      url: 'https://vlscppe.microsoft.com/tags',
+      params: {
+        org_id: 'y6jn8c31',
+        session_id: sessionId
+      }
     })
   }
 
-  logger.info(getLogString(`Requested new session with ID ${sessionId}`))
+  //
+  // Get SKU from language
+  //
+  const { Skus } = await dataStore.languageSkuIdTable(sessionId, productEdition)
+  const sku = Skus.find((sku) => sku.LocalizedLanguage === options.language)
 
-  // Extract everything after the last slash
-  const urlSegmentParameter = url.split('/').pop() as string
-
-  // Get language -> skuID association table
-  // SKU ID: This specifies the language of the ISO. We always use "English (United States)", however, the SKU for this changes with each Windows release
-  // We must make this request so our next one will be allowed
-  const languageSkuIdTable = await data.languageSkuIdTable({
-    sessionId,
-    urlSegmentParameter,
-    productEditionId
-  })
-
-  logger.info(getLogString('Retrieved language to SKU ID association table'))
-
-  // The skuID is held inside a JSON object that is stringified as the value to an option element
-  const skuId = JSON.parse(
-    (languageSkuIdTable
-      // Get all option elements from the table HTML
-      .querySelectorAll('option')
-      // Find the option that corresponds to english and grab it's value attribute
-      .find(item => item.innerHTML.includes('English (United States)'))?.attributes.value) ?? '{}'
-  ).id
-
-  if (!skuId) {
-    const message = 'SKU ID was not found when parsing '
-    logger.error(message)
-    throw Error(message)
+  if (!sku) {
+    throw Error(`SKU for ${options.language} was not found`)
   }
 
-  logger.info(getLogString(`Parsed SKU ID - ${skuId}`))
-
+  //
   // Get ISO download link
-  // If any request is going to be blocked by Microsoft it's always this last one (the previous requests always seem to succeed)
-  // --referer: Required by Microsoft servers to allow request
-  const isoDownloadPage = await data.isoDownloadPage({
-    sessionId,
-    urlSegmentParameter,
-    skuId,
-    url
-  })
-
-  logger.info(getLogString('Retrieved page with ISO download link'))
-
-  const downloadUrl =
-    isoDownloadPage
-      // Get all inputs with the class .product-download-hidden
-      .querySelectorAll('input.product-download-hidden')
-      // Parse value JSON and map
-      .map(x => {
-        let { value } = x.attributes
-        const match = value.match(/"DownloadType": (Iso.+) }/)
-
-        if (match) {
-          const type = match[1]
-          value = value.replace(type, `"${type}"`)
-        }
-
-        try {
-          return JSON.parse(value)
-        } catch (e) {
-          return {}
-        }
-      })
-      // Get what we want
-      .find(x => x.DownloadType === 'IsoX64')?.Uri
-
-  if (!downloadUrl) {
-    const message = 'Failed to parse ISO download URL'
-    logger.error(message)
-    throw Error(message)
+  //
+  const { ProductDownloadOptions } = await dataStore.productDownloadOptions(sessionId, sku.Id)
+  /**
+   * If the above request fails, the response will look like this:
+   * {
+   *   Errors: [
+   *     {
+   *       Key: 'ErrorSettings.SentinelReject',
+   *       Value: 'Sentinel marked this request as rejected.',
+   *       Type: 9
+   *     }
+   *   ]
+   * }
+   *
+   * We can assume that if there's no `ProductDownloadOptions` key
+   * then it's no good. As far as why this happens, I'm not sure.
+   * I think it has something to do with the session being
+   * invalid. I'm not sure if it's related to a rate limit
+   * or invalid request headers. It's worth noting I'm not
+   * sending a cookie that the browser would normally send.
+   * For now I'll assume it's a rate limit and throw an error.
+   */
+  if (!ProductDownloadOptions) {
+    throw new WinIsoRateLimitError('Rate limit exceeded')
   }
 
-  const { pathname } = new URL(downloadUrl)
-  const filename = name ?? path.basename(pathname)
-  const filePath = path.resolve(directory, filename)
+  const downloadType = isWindows10Options(options) && options.architecture === 'x32' ? 0 : 1
+  const downloadOption = ProductDownloadOptions.find((option) => option.DownloadType === downloadType)
+
+  if (!downloadOption) {
+    throw Error('Download option was not found')
+  }
+
+  //
+  // Get checkum hash
+  //
+  // Because of some malformed HTML we need to extract the table manually
+  const table = mainDownloadPage.toString().match(/<table\b[^>]*>([\s\S]*?)<\/table>/gi)
+  if (!table) {
+    throw Error('Checkum table was not found')
+  }
+
+  const checksumTable = parseHtml(table[0])
+
+  const getChecksumByLanguage = (language: string): string | null => {
+    const rows = checksumTable.querySelectorAll('tr')
+
+    for (const row of rows) {
+      const columns = row.querySelectorAll('td')
+      if (columns.length >= 2) {
+        const langText = columns[0].text.trim() // First <td> has the language
+        const checksumText = columns[1].text.trim() // Second <td> has the checksum
+
+        if (langText === language) {
+          return checksumText // Return the checksum if the language matches
+        }
+      }
+    }
+
+    return null // Return null if the language is not found
+  }
+
+  const arch = isWindows10Options(options) && options.architecture === 'x32' ? '32-bit' : '64-bit'
+  const checksumTarget = `${downloadOption.Language} ${arch}`
+  const checksum = getChecksumByLanguage(checksumTarget)
+
+  if (!checksum) {
+    throw Error(`Checksum for ${checksumTarget} was not found`)
+  }
+
+  //
+  // Download ISO
+  //
+  const { pathname } = new URL(downloadOption.Uri)
+  const filename = options.name || path.basename(pathname) // eslint-disable-line
+  const filePath = path.resolve(options.directory, filename)
 
   await downloadFile({
-    url: downloadUrl,
+    url: downloadOption.Uri,
     filePath,
-    onProgress
+    isDev: IS_DEV,
+    onProgress: options.onProgress
   })
+
+  //
+  // Perform checksum verification
+  //
+  options.onProgress?.({ type: 'checksum' })
+  if (!IS_DEV) {
+    // A file is only created if dev mode is disabled
+    const fileHash = await getFileHash(filePath)
+
+    if (fileHash.toLowerCase() !== checksum.toLowerCase()) {
+      throw new WinIsoChecksumError('Checksum verification failed', filePath)
+    }
+  } else {
+    // If dev mode is enabled we
+    // will just wait a few seconds
+    // so the CLI can be tested
+    await new Promise((resolve) => setTimeout(resolve, 3000))
+  }
 
   return filePath
 }
-
-export default consumerDownload

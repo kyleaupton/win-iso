@@ -46,6 +46,12 @@ Then download a specified version:
 win-iso download win10x64
 ```
 
+You can also specify the download directory, ISO file name, and the language. For more information, run:
+
+```bash
+win-iso download --help
+```
+
 ## API
 
 ### Installation
@@ -59,33 +65,13 @@ npm i @kyleupton/win-iso
 ### API Usage
 
 ```typescript
-import { getDownloadChoices, WindowsIsoDownloader } from '@kyleupton/win-iso'
+import { download } from '@kyleupton/win-iso'
 
-// Get the available download choices
-// [
-//   {
-//     key: 'win10x64',
-//     displayName: 'Windows 10 (64-bit)'
-//   },
-//   {
-//     key: 'win11x64',
-//     displayName: 'Windows 11 (64-bit)'
-//   }
-//   ...
-// ]
-const choices = getDownloadChoices()
-
-// Download a specific version
-const downloader = new WindowsIsoDownloader({
-  key: 'win10x64',
+const filePath = await download({
+  version: 'win10x64',
   directory: '/path/to/save',
+  language: 'English (United States)'
 })
-
-downloader.on('progress', (progress) => {
-  console.log(`Downloaded ${progress.percentage}%`)
-})
-
-await downloader.download()
 ```
 
 ## Constraints
@@ -95,30 +81,6 @@ Please be aware that Microsoft has implemented measures to discourage the automa
 It's worth noting that most conventional VPN services may not provide a workaround to this restriction, as their IP ranges could potentially be pre-emptively banned. A less common VPN service or a self-hosted solution may be more successful in circumventing these limitations.
 
 For the facilitation of development, a dev mode has been created. When activated, this mode ensures that the tool does not establish communication with Microsoft's servers. Instead, it operates using sample HTML files.
-
-## Logging
-
-Logging is available for both the CLI and API to help with debugging. It is disabled by default.
-
-### CLI
-
-To enable logging for the CLI, set the `WIN_ISO_DEBUG` environment variable to `true`.
-
-```bash
-WIN_ISO_DEBUG=true win-iso download win10x64
-```
-
-### API
-
-To enable logging for the API, pass the `log` option to the `WindowsIsoDownloader` constructor.
-
-```typescript
-const downloader = new WindowsIsoDownloader({
-  key: 'win10x64',
-  directory: '/path/to/save',
-+  log: true,
-})
-```
 
 ## Development
 
@@ -157,4 +119,7 @@ WIN_ISO_DEV=true npx tsx src/cli/index.ts
 - [ ] More version support
 - [ ] Full API + CLI documentation
 - [x] Download progress
-- [ ] Checksum verification
+- [x] Checksum verification
+- [ ] Random user agent
+- [ ] Tests
+- [x] Support for other languages

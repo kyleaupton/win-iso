@@ -1,7 +1,7 @@
 import fs from 'node:fs'
 import path from 'node:path'
 import { describe, test, beforeAll } from 'vitest'
-import { WindowsIsoDownloader } from '../src/index.js'
+import { download } from '../src'
 
 describe('Win10x64', () => {
   const directory = path.join(process.cwd(), 'test-downloads')
@@ -14,16 +14,10 @@ describe('Win10x64', () => {
   })
 
   test('download', async () => {
-    const downloader = new WindowsIsoDownloader({
-      key: 'win10x64',
-      directory,
-      log: true
+    await download({
+      version: 'win11x64',
+      language: 'English (United States)',
+      directory: ''
     })
-
-    downloader.on('progress', (progress) => {
-      console.log(progress)
-    })
-
-    await downloader.download()
   })
 })

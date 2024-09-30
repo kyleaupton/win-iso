@@ -1,12 +1,22 @@
 import fs from 'node:fs'
+import fsAsync from 'node:fs/promises'
+import path from 'node:path'
 import { Command, Option } from 'commander'
 import chalk from 'chalk'
-import { getDownloadChoices } from '../index.js'
-import ProgressBar from './ProgressBar.js'
+import ora, { type Ora } from 'ora'
+import { download } from '@/index'
+import { WinIsoChecksumError } from '@/errors'
+import languages, { type Language } from '@/consumer-download/languages'
+import ProgressBar from './ProgressBar'
+import { options } from './download-options'
 
 export const nonInteractive = async () => {
+  if (process.env.WIN_ISO_DEV === 'true') {
+    console.log('Dev mode enabled')
+  }
+
   const packageJson = JSON.parse(
-    fs.readFileSync(new URL('../../package.json', import.meta.url), 'utf-8')
+    fs.readFileSync(path.join(__dirname, '../..', 'package.json'), 'utf-8')
   )
   const program = new Command()
 
@@ -27,11 +37,20 @@ export const nonInteractive = async () => {
       console.log(`${chalk.bold.underline('Key')}\t\t${chalk.bold.underline('Display Name')}`)
 
       // Data
-      console.log(
-        getDownloadChoices()
-          .map(x => `${x.key}\t${x.displayName}`)
-          .join('\n')
-      )
+      options.forEach((option) => {
+        console.log(`${option.version}\t${option.displayName}`)
+      })
+    })
+
+  program
+    .command('languages')
+    .description('List all available languages for Windows 10 and 11')
+    .action(() => {
+      console.log('Available languages:\n')
+
+      languages.forEach((language) => {
+        console.log(language)
+      })
     })
 
   program
@@ -39,33 +58,71 @@ export const nonInteractive = async () => {
     .argument('<key>', 'The key of the windows version to download')
     .addOption(new Option('-d, --directory <path>', 'The directory to save the downloaded ISO in'))
     .addOption(new Option('-n, --name <name>', 'The output name for the downloaded file').conflicts('-d, --directory'))
+    .addOption(new Option('-l, --language <language>', 'The language of the Windows ISO').default('English (United States)'))
     .description('Download the specified windows version')
-    .action(async (key, { name, directory }) => {
+    .action(async (key, { name, directory, language }: { name?: string, directory: string, language: Language }) => {
       // Validate location exists if provided
       if (directory && !fs.existsSync(directory)) {
         console.error(`Error: Download location ${directory} does not exist`)
         process.exit(1)
       }
 
-      const options = getDownloadChoices()
-      const option = options.find(x => x.key === key)
+      // Validate language
+      if (!languages.includes(language)) {
+        console.error(`Invalid language: ${language}. Use 'languages' command to see available options.`)
+        process.exit(1)
+      }
+
+      // Validate key
+      const option = options.find(x => x.version === key)
       if (!option) {
         console.error(`Invalid key: ${key}. Use 'list' command to see available options.`)
         process.exit(1)
       }
 
-      console.log('Downloading...')
-      const progressBar = new ProgressBar()
+      const genLinkSpinner = ora('Generating download link...').start()
+      let progressBar: ProgressBar | undefined
+      let checksumSpinner: Ora | undefined
 
-      const path = await option.download({
-        directory: directory || process.cwd(),
-        name,
-        log: process.env.WIN_ISO_DEBUG === 'true',
-        onProgress: (progress) => { progressBar.update(progress) }
-      })
+      try {
+        const path = await download({
+          version: option.version,
+          name,
+          directory: directory || process.cwd(),
+          language,
+          onProgress: (progress) => {
+            if (progress.type === 'download') {
+            // If the progress bar has not been created yet, create it
+            // and stop the gen link spinner
+              if (!progressBar) {
+                genLinkSpinner.succeed('Download link generated!')
+                console.log('Downloading...')
+                progressBar = new ProgressBar()
+              }
 
-      console.log(`Downloaded: ${path}`)
+              progressBar.update(progress)
+            } else if (progress.type === 'checksum') {
+              checksumSpinner = ora('Verifying checksum...').start()
+            }
+          }
+        })
+
+        if (checksumSpinner) {
+          checksumSpinner.succeed('Checksum verified!')
+        }
+
+        console.log(`Downloaded: ${path}`)
+      } catch (error) {
+        console.log(error)
+        if (error instanceof WinIsoChecksumError) {
+          // Checksum verification failed, delete the downloaded file
+          if (error.path) {
+            await fsAsync.unlink(error.path)
+          }
+          checksumSpinner?.fail('Checksum verification failed. Deleted downloaded file. Please try again. If the checksum verification continues to fail, please open an issue at https://github.com/kyleaupton/win-iso/issues.')
+        }
+      }
     })
 
-  program.parse()
+  await program.parseAsync(process.argv)
 }

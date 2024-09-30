@@ -1,52 +1,84 @@
-import { TypedEmitter } from 'tiny-typed-emitter'
-import media, { type Media, type MediaKeys, type MediaDownloadOptions } from './media/index.js'
-import { type DownloadProgress } from './types.js'
+import { type Progress } from '@/types'
+import { type Language } from '@/consumer-download/languages'
+import { consumerDownload } from '@/consumer-download'
 
-type DownloadChoice = Media & { key: MediaKeys }
-
-/**
- * getDownloadChoices
- * @returns {DownloadOption[]} An array of download choices
- */
-export const getDownloadChoices = (): DownloadChoice[] => {
-  const payload: DownloadChoice[] = []
-
-  for (const key in media) {
-    const _key = key as MediaKeys
-    payload.push({ key: _key, ...media[_key] })
-  }
-
-  return payload
+export interface BaseDownloadOptions {
+  directory: string
+  name?: string
+  onProgress?: (progress: Progress) => void
 }
 
-type DownloadOptions = Omit<MediaDownloadOptions, 'onProgress'> & { key: MediaKeys }
-
-interface WindowsIsoDownloaderEvents {
-  'progress': (progress: DownloadProgress) => void
+export interface Win10x32Options extends BaseDownloadOptions {
+  version: 'win10x32'
+  language: Language
 }
 
-export class WindowsIsoDownloader extends TypedEmitter<WindowsIsoDownloaderEvents> {
-  options: DownloadOptions
-  media: Media
+export interface Win10x64Options extends BaseDownloadOptions {
+  version: 'win10x64'
+  language: Language
+}
 
-  constructor(options: DownloadOptions) {
-    super()
+export interface Win11x64Options extends BaseDownloadOptions {
+  version: 'win11x64'
+  language: Language
+}
 
-    const targetMedia = media[options.key]
-    if (!targetMedia) {
-      throw Error(`Invalid media key: ${options.key}`)
-    }
+export type DownloadOptions = Win10x32Options | Win10x64Options | Win11x64Options
 
-    this.options = options
-    this.media = targetMedia
-  }
+interface DownloadStrategy<T extends BaseDownloadOptions> {
+  download: (options: T) => Promise<string>
+}
 
-  async download() {
-    return await this.media.download({
-      ...this.options,
-      onProgress: (progress) => {
-        this.emit('progress', progress)
-      }
+class Win10x32DownloadStrategy implements DownloadStrategy<Win10x32Options> {
+  async download(options: Win10x32Options) {
+    return await consumerDownload({
+      version: 10,
+      architecture: 'x32',
+      directory: options.directory,
+      name: options.name,
+      language: options.language,
+      onProgress: options.onProgress
     })
   }
+}
+
+class Win10x64DownloadStrategy implements DownloadStrategy<Win10x64Options> {
+  async download(options: Win10x64Options) {
+    return await consumerDownload({
+      version: 10,
+      architecture: 'x64',
+      directory: options.directory,
+      name: options.name,
+      language: options.language,
+      onProgress: options.onProgress
+    })
+  }
+}
+
+class Win11x64DownloadStrategy implements DownloadStrategy<Win11x64Options> {
+  async download(options: Win11x64Options) {
+    return await consumerDownload({
+      version: 11,
+      directory: options.directory,
+      name: options.name,
+      language: options.language,
+      onProgress: options.onProgress
+    })
+  }
+}
+
+const getDownloadStrategy = (options: DownloadOptions): DownloadStrategy<any> => {
+  switch (options.version) {
+    case 'win10x32':
+      return new Win10x32DownloadStrategy()
+    case 'win10x64':
+      return new Win10x64DownloadStrategy()
+    case 'win11x64':
+      return new Win11x64DownloadStrategy()
+  }
+}
+
+export async function download(options: DownloadOptions): Promise<string> {
+  const strategy = getDownloadStrategy(options)
+  return await strategy.download(options)
 }

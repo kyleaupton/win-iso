@@ -1,64 +1,116 @@
 import fs from 'node:fs/promises'
 import path from 'node:path'
-import { parse as parseHtml } from 'node-html-parser'
-import { request } from '../utils/request.js'
+import { parse as parseHtml, type HTMLElement } from 'node-html-parser'
+import { request } from './request'
+import { type LanguageSkuIdTable, type ProductDownload } from './types'
 
-export default class DataStore {
-  debug: boolean
+interface DataRetrievalStrategy {
+  mainDownloadPage: () => Promise<HTMLElement>
+  languageSkuIdTable: (sessionId: string, productEditionId: string) => Promise<LanguageSkuIdTable>
+  productDownloadOptions: (sessionId: string, skuId: string) => Promise<ProductDownload>
+}
 
-  constructor(debug: boolean) {
-    this.debug = debug
+export class DebugStrategy implements DataRetrievalStrategy {
+  private readonly version: 10 | 11
+
+  constructor(version: 10 | 11) {
+    this.version = version
   }
 
-  _getSampleDataPath(name: string) {
-    return path.resolve('src', 'sample-res', name)
+  private _getSampleDataPath(name: string) {
+    return path.resolve('src', 'consumer-download', 'sample-data', `windows-${this.version}`, name)
   }
 
-  // Step 1
-  async mainDownloadPage({ url }: { url: string }) {
-    let html: string
-
-    if (this.debug) {
-      html = await fs.readFile(this._getSampleDataPath('mainDownloadPage.html'), { encoding: 'utf-8' })
-    } else {
-      html = (await request({ url, method: 'GET' })).data
-    }
-
+  async mainDownloadPage(): Promise<HTMLElement> {
+    const html = await fs.readFile(this._getSampleDataPath('mainDownloadPage.html'), { encoding: 'utf-8' })
     return parseHtml(html)
   }
 
-  // Step 2
-  async languageSkuIdTable({ sessionId, urlSegmentParameter, productEditionId }: { sessionId: string, urlSegmentParameter: string, productEditionId: string }) {
-    let html: string
-
-    if (this.debug) {
-      html = await fs.readFile(this._getSampleDataPath('skuId.html'), { encoding: 'utf-8' })
-    } else {
-      html = (await request({
-        url: `https://www.microsoft.com/en-US/api/controls/contentinclude/html?pageId=a8f8f489-4c7f-463a-9ca6-5cff94d8d041&host=www.microsoft.com&segments=software-download,${urlSegmentParameter}&query=&action=getskuinformationbyproductedition&sessionId=${sessionId}&productEditionId=${productEditionId}&sdVersion=2`,
-        method: 'POST'
-      })).data
-    }
-
-    return parseHtml(html)
+  async languageSkuIdTable(): Promise<LanguageSkuIdTable> {
+    const json = await fs.readFile(this._getSampleDataPath('languageSkus.json'), { encoding: 'utf-8' })
+    return JSON.parse(json)
   }
 
-  // Step 3
-  async isoDownloadPage({ sessionId, urlSegmentParameter, skuId, url }: { sessionId: string, urlSegmentParameter: string, skuId: string, url: string }) {
-    let html: string
+  async productDownloadOptions(): Promise<ProductDownload> {
+    const json = await fs.readFile(this._getSampleDataPath('productDownloadLink.json'), { encoding: 'utf-8' })
+    return JSON.parse(json)
+  }
+}
 
-    if (this.debug) {
-      html = await fs.readFile(this._getSampleDataPath('isoDownloadPage.html'), { encoding: 'utf-8' })
-    } else {
-      html = (await request({
-        url: `https://www.microsoft.com/en-US/api/controls/contentinclude/html?pageId=6e2a1789-ef16-4f27-a296-74ef7ef5d96b&host=www.microsoft.com&segments=software-download,${urlSegmentParameter}&query=&action=GetProductDownloadLinksBySku&sessionId=${sessionId}&skuId=${skuId}&language=English&sdVersion=2`,
-        method: 'POST',
-        headers: {
-          Referer: url
-        }
-      })).data
-    }
+export class ProductionStrategy implements DataRetrievalStrategy {
+  private readonly version: 10 | 11
+  private readonly url: string
 
-    return parseHtml(html)
+  constructor(version: 10 | 11) {
+    this.version = version
+    this.url = `https://www.microsoft.com/en-us/software-download/windows${version}`
+    if (this.version === 10) this.url = `${this.url}ISO`
+  }
+
+  async mainDownloadPage(): Promise<HTMLElement> {
+    const response = await request({ url: this.url, method: 'GET' })
+    return parseHtml(response.data)
+  }
+
+  async languageSkuIdTable(sessionId: string, productEditionId: string): Promise<LanguageSkuIdTable> {
+    const { data } = await request({
+      method: 'GET',
+      url: 'https://www.microsoft.com/software-download-connector/api/getskuinformationbyproductedition',
+      headers: {
+        Referer: this.url
+      },
+      params: {
+        profile: '606624d44113',
+        ProductEditionId: productEditionId,
+        SKU: undefined,
+        friendlyFileName: undefined,
+        Locale: 'en-US',
+        sessionID: sessionId
+      }
+    })
+
+    return data
+  }
+
+  async productDownloadOptions(sessionId: string, skuId: string): Promise<ProductDownload> {
+    const res = await request({
+      method: 'GET',
+      url: 'https://www.microsoft.com/software-download-connector/api/GetProductDownloadLinksBySku',
+      headers: {
+        Referer: this.url
+      },
+      params: {
+        profile: '606624d44113',
+        ProductEditionId: undefined,
+        SKU: skuId,
+        friendlyFileName: undefined,
+        Locale: 'en-US',
+        sessionID: sessionId
+      }
+    })
+
+    // console.log(res)
+
+    return res.data
+  }
+}
+
+export class DataStore {
+  private readonly strategy: DataRetrievalStrategy
+
+  constructor(strategy: DataRetrievalStrategy) {
+    this.strategy = strategy
+  }
+
+  async mainDownloadPage(): Promise<HTMLElement> {
+    return await this.strategy.mainDownloadPage()
+  }
+
+  async languageSkuIdTable(sessionId: string, productEditionId: string): Promise<LanguageSkuIdTable> {
+    return await this.strategy.languageSkuIdTable(sessionId, productEditionId)
+  }
+
+  async productDownloadOptions(sessionId: string, skuId: string): Promise<ProductDownload> {
+    return await this.strategy.productDownloadOptions(sessionId, skuId)
   }
 }
